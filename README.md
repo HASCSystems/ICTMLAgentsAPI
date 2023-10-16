@@ -1,7 +1,7 @@
 # ICT MLAgents API
 An 8-connected dense waypoint-based multi-agent reinforcement learning environment capable of handling large realistic environments for training combat-related scenarios using Unity Scenes and Unity MLAgents framework
 
-This is currently on AWS. It will be moved here to GitHub very soon. To obtain access, please email me at: [kumar@ict.usc.edu](mailto:kumar@ict.usc.edu) and you will be granted access. Thank you.
+This is currently using a generic terrain, however the waypoints do not conform to this terrain and it causes some issues.
 
 Rajay Kumar, PhD
 
