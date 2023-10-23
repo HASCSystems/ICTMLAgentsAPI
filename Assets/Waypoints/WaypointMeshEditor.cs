@@ -128,16 +128,17 @@ public class WaypointMeshEditor : MonoBehaviour
         return CheckYDistanceDownward(pos);
     }
 
-    public virtual float CheckYDistanceToTerrain(Vector3 positionToCheck)
+    public static float CheckYDistanceToTerrain(Vector3 positionToCheck)
     {
-        RaycastHit[] uphits = Physics.RaycastAll(positionToCheck, Vector3.up, 200f);
-        RaycastHit[] downhits = Physics.RaycastAll(positionToCheck, Vector3.down, 200f);
+        RaycastHit[] uphits = Physics.RaycastAll(positionToCheck, Vector3.up, 500f);
+        RaycastHit[] downhits = Physics.RaycastAll(positionToCheck, Vector3.down, 500f);
         List<RaycastHit> allHits = new List<RaycastHit>(uphits);
         allHits.AddRange(downhits);
         float minDist = Mathf.Infinity;
         List<RaycastHit> closestHit = new List<RaycastHit>();
         foreach(RaycastHit hit in allHits)
         {
+            Debug.Log("hit=" + hit.transform.gameObject.name + " @ " + hit.point + "; t= " + Time.realtimeSinceStartup);
             if (hit.transform.CompareTag("ground"))
             {
                 float d = Vector3.Distance(hit.point, positionToCheck);
@@ -184,6 +185,42 @@ public class WaypointMeshEditor : MonoBehaviour
         if (closestHit.Count > 0)
         {
             return positionToCheck.y - closestHit[0].point.y;
+        }
+        else
+        {
+            return float.NaN;
+        }
+    }
+
+    /// <summary>
+    /// Get terrain height at the specified X and Z value
+    /// </summary>
+    /// <param name="positionToCheck">Vector with X and Z value. Y-value will be ignored.</param>
+    /// <returns></returns>
+    public virtual float GetTerrainHeight(Vector3 positionToCheck)
+    {
+        RaycastHit[] downhits = Physics.RaycastAll(new Vector3(positionToCheck.x, 300f, positionToCheck.z), Vector3.down, 300f);
+        List<RaycastHit> allHits = new List<RaycastHit>(downhits);
+
+        float minDist = Mathf.Infinity;
+        List<RaycastHit> closestHit = new List<RaycastHit>();
+        foreach (RaycastHit hit in allHits)
+        {
+            if (hit.transform.CompareTag("ground"))
+            {
+                float d = Vector3.Distance(hit.point, positionToCheck);
+                if (d < minDist)
+                {
+                    minDist = d;
+                    closestHit.Clear();
+                    closestHit.Add(hit);
+                }
+            }
+        }
+
+        if (closestHit.Count > 0)
+        {
+            return closestHit[0].point.y;
         }
         else
         {

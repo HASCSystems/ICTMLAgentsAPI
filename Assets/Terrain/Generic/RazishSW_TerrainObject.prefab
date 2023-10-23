@@ -42,7 +42,7 @@ GameObject:
   - component: {fileID: 3319851868660134879}
   - component: {fileID: 6542798028434151244}
   - component: {fileID: 4264780799373069826}
-  - component: {fileID: 1774950651215331370}
+  - component: {fileID: 6000481624621668672}
   m_Layer: 0
   m_Name: EXPORT_GOOGLE_SAT_WM
   m_TagString: Untagged
@@ -114,7 +114,7 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!64 &1774950651215331370
+--- !u!64 &6000481624621668672
 MeshCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -125,6 +125,6 @@ MeshCollider:
   m_IsTrigger: 0
   m_Enabled: 1
   serializedVersion: 4
-  m_Convex: 1
+  m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 2709305911501707158, guid: 8ab787754f0355b44a0d680b1e2366ce, type: 3}

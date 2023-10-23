@@ -52,6 +52,11 @@ public class WaypointData
         Color.yellow
     };
 
+    public WaypointData()
+    {
+        neighborIDs = new string[WaypointMeshController.NumWaypointConnections+1];
+    }
+
     public virtual bool HasNeighborInDirection(int direction)
     {
         if (neighborIDs == null)
@@ -131,14 +136,14 @@ public class WaypointMeshData : ScriptableObject
     public void SetupDictionary()
     {
         waypointLookupTable.Clear();
-        Debug.Log("A) WaypointMeshData count=" + waypointLookupTable.Count);
+        //Debug.Log("A) WaypointMeshData count=" + waypointLookupTable.Count);
         string wps = "Waypoints:";
         foreach (WaypointData wd in waypointData)
         {
             waypointLookupTable.Add(wd.waypointID, wd);
             wps += wd.waypointID + ";";
         }
-        Debug.Log("B) WaypointMeshData count=" + waypointLookupTable.Count + "; " + wps);
+        //Debug.Log("B) WaypointMeshData count=" + waypointLookupTable.Count + "; " + wps);
     }
 
     public void AddWaypoint(WaypointData newWaypoint)
@@ -147,6 +152,17 @@ public class WaypointMeshData : ScriptableObject
         if (!waypointLookupTable.ContainsKey(newWaypoint.waypointID))
         {
             waypointData.Add(newWaypoint);
+            CheckWaypointConnections();
+            SetupDictionary();
+        }
+    }
+
+    public void RemoveWaypoint(WaypointData waypointToRemove)
+    {
+        SetupDictionary();
+        if (waypointLookupTable.ContainsKey(waypointToRemove.waypointID))
+        {
+            waypointData.Remove(waypointToRemove);
             CheckWaypointConnections();
             SetupDictionary();
         }
@@ -188,15 +204,22 @@ public class WaypointMeshData : ScriptableObject
         SetupDictionary();
         foreach (KeyValuePair<string, WaypointData> kvp in waypointLookupTable)
         {
-            for (int i = 1; i < kvp.Value.neighborIDs.Length; ++i)
+            if (kvp.Value != null)
             {
-                string neighborID = kvp.Value.neighborIDs[i];
-                if (!string.IsNullOrEmpty(neighborID))
+                for (int i = 1; i < kvp.Value.neighborIDs.Length; ++i)
                 {
-                    if (waypointLookupTable[neighborID].neighborIDs[Waypoint.GetOppositeDirection(i)] != kvp.Key)
+                    string neighborID = kvp.Value.neighborIDs[i];
+                    if (!string.IsNullOrEmpty(neighborID))
                     {
-                        // Fix it!
-                        waypointLookupTable[neighborID].neighborIDs[Waypoint.GetOppositeDirection(i)] = kvp.Key;
+                        if (!waypointLookupTable.ContainsKey(neighborID))
+                        {
+                            kvp.Value.neighborIDs[i] = string.Empty;
+                        }
+                        else if (waypointLookupTable[neighborID].neighborIDs[Waypoint.GetOppositeDirection(i)] != kvp.Key)
+                        {
+                            // Fix it!
+                            waypointLookupTable[neighborID].neighborIDs[Waypoint.GetOppositeDirection(i)] = kvp.Key;
+                        }
                     }
                 }
             }
