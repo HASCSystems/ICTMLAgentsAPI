@@ -36,7 +36,7 @@ public class HeuristicController : MonoBehaviour
     protected int lastFixedPathIndex = 0, numFixedPathTries = 0, tryCount = 0;
 
 
-    private void Awake()
+    protected virtual void Awake()
     {
         WaypointMeshController.onWaypointsSetup += SetupPaths;
 
@@ -56,7 +56,7 @@ public class HeuristicController : MonoBehaviour
 
     }
 
-    public void OnReset()
+    public virtual void OnReset()
     {
         fixedPathIndex = 0;
         lastFixedPathIndex = 0;
@@ -64,12 +64,12 @@ public class HeuristicController : MonoBehaviour
         tryCount = 0;
     }
 
-    private void OnDestroy()
+    protected virtual void OnDestroy()
     {
         WaypointMeshController.onWaypointsSetup -= SetupPaths;
     }
 
-    private void SetupPaths()
+    protected virtual void SetupPaths()
     {
         if (fullFixedPath.Count <= 0 && 
             (
@@ -117,7 +117,7 @@ public class HeuristicController : MonoBehaviour
         }
     }
 
-    public AgentAction CheckState(AgentGroup group)
+    public virtual AgentAction CheckState(AgentGroup group)
     {
         AgentAction groupAction = new AgentAction();
 
