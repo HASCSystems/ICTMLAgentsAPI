@@ -212,6 +212,8 @@ public class ScoutAgent : Agent
         {
             RequestDecision();
         }
+
+        rewardsCalculator.ClearAllBuffers();
     }
 
 

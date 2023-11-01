@@ -9,6 +9,16 @@ Rajay Kumar, PhD
 
 2023-Jun-28
 
+## Developer Note
+
+You very likely will have to inherit from and override the following classes:
+- GameController
+- AttackCalculator
+- ScoutAgent
+- HeuristicController
+
+These classes contain functions for rewards, actions, heuristics, attacks, and episode end conditions.
+
 ## Purpose
 
 This document describes the proposed functionality of an API to accommodate a variety of waypoint-based simulations utilizing realistic and non-realistic terrain.

@@ -248,8 +248,9 @@ public class GameController : MonoBehaviour
 
         // The current agent was just killed and is the final agent
         if (IS_DEBUG) Debug.Log("m_NumberOfBluePlayersRemaining =" + m_NumberOfBluePlayersRemaining);
-        if ((m_NumberOfBluePlayersRemaining < Team1Players.Count) || // If one blue dies end episode
-            m_NumberOfRedPlayersRemaining == 0)
+        if ((m_NumberOfBluePlayersRemaining == 0) || 
+            (m_NumberOfRedPlayersRemaining == 0)
+            )
         {
             //SetEndOfEpisodeRewards(ThrowAgentGroup, HitAgentGroup);
             
