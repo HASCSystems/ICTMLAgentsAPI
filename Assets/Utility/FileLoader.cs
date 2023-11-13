@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -27,6 +29,43 @@ public class FileLoader : MonoBehaviour
                 wp.transform.position = loc;
                 wp.name = "N" + (i + 1) + parts[0];
             }
+        }
+    }
+
+    public static void WriteLineToFile(string fileName, string lineToWrite)
+    {
+        string path = Application.streamingAssetsPath + "\\" + fileName;
+        // This text is added only once to the file.
+        if (!File.Exists(path))
+        {
+            // Create a file to write to.
+            using (StreamWriter sw = File.CreateText(path))
+            {
+                sw.WriteLine(lineToWrite);
+            }
+        }
+        else
+        {
+            // This text is always added, making the file longer over time
+            // if it is not deleted.
+            using (StreamWriter sw = File.AppendText(path))
+            {
+                sw.WriteLine(lineToWrite);
+            }
+        }
+    }
+
+    public static string RetrieveFileContents(string fileName)
+    {
+        string path = Application.streamingAssetsPath + "\\" + fileName;
+        // This text is added only once to the file.
+        if (File.Exists(path))
+        {
+            return File.ReadAllText(path);
+        }
+        else
+        {
+            return string.Empty;
         }
     }
 }

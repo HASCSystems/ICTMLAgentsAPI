@@ -19,14 +19,23 @@ public class AgentGroup
     public delegate void AssistSignalActivationDelegate(int index, bool isOn);
     public static event AssistSignalActivationDelegate onAssistSignal = null;
 
-    protected void Awake()
+    protected virtual void Awake()
     {
         WaypointMeshController.onWaypointsSetup += SetupWaypoints;
     }
 
-    protected void OnDestroy()
+    protected virtual void OnDestroy()
     {
         WaypointMeshController.onWaypointsSetup -= SetupWaypoints;
+    }
+
+    public virtual void Reset()
+    {
+        SetAssistanceSignal(false);
+        SetShelterBound(false);
+        SetSpeed(true);
+        lastActedStep = -1;
+        currentScenarioState = HeuristicController.SCENARIO_STATE.INITIAL;
     }
 
     public virtual void SetupWaypoints()
@@ -48,7 +57,7 @@ public class AgentGroup
         return null;
     }
 
-    public void SetAssistanceSignal(bool isSet)
+    public virtual void SetAssistanceSignal(bool isSet)
     {
         //if (IS_DEBUG) Debug.Log("Scout Group " + index + " assistance signal set to " + isSet);
         isSendingAssistanceSignal = isSet;
@@ -56,17 +65,17 @@ public class AgentGroup
             onAssistSignal(index, isSet);
     }
 
-    public bool GetAssistanceSignal()
+    public virtual bool GetAssistanceSignal()
     {
         return isSendingAssistanceSignal;
     }
 
-    public void SetShelterBound(bool isSet)
+    public virtual void SetShelterBound(bool isSet)
     {
         shelterBound = isSet;
     }
 
-    public bool GetShelterBound()
+    public virtual bool GetShelterBound()
     {
         return shelterBound;
     }

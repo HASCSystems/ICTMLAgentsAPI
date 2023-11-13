@@ -114,8 +114,20 @@ public class WaypointVisibilityController : MonoBehaviour
         GetPartParent().parent.localEulerAngles = Vector3.zero;
         GetPartParent().parent.LookAt(target); // Look at target
         GetPartParent().parent.localEulerAngles = new Vector3(0f, GetPartParent().parent.localEulerAngles.y, 0f); // but only keep the y-rotation, set x and z to zero
+        ScoutAgent sourceAgent = GetPartParent().parent.GetComponent<ScoutAgent>();
+        WaypointData sourceWD = null;
+        if (sourceAgent != null)
+        {
+            sourceWD = sourceAgent.currentWaypoint;
+        }
+        WaypointData tgtWD = null;
+        ScoutAgent targetAgent = target.GetComponent<ScoutAgent>();
+        if (targetAgent != null)
+        {
+            tgtWD = targetAgent.currentWaypoint;
+        }
         if (stanceController != null)
-            yield return stanceController.FindTorsoCollisionAngleAsync();
+            yield return stanceController.FindTorsoCollisionAngleAsync(sourceWD, tgtWD);
         else
             yield return null;
     }
@@ -148,7 +160,7 @@ public class WaypointVisibilityController : MonoBehaviour
             bodyParts[2].localEulerAngles = new Vector3(0f, 0f, 0f);
             bodyParts[2].localScale = new Vector3(0.367f, 0.417f, 0.367f);
         }
-        
+
     }
 
     protected virtual void SetUpright()
@@ -180,13 +192,13 @@ public class WaypointVisibilityController : MonoBehaviour
         List<GameObject> foundParts = new List<GameObject>();
         if (stanceController != null)
         {
-            foreach(Transform child in stanceController.transform)
+            foreach (Transform child in stanceController.transform)
             {
                 if ((child.gameObject.activeInHierarchy) &&
                     (!child.gameObject.CompareTag("noprojectile"))
                     )
                 {
-                    foreach(Transform gchild in child)
+                    foreach (Transform gchild in child)
                     {
                         foundParts.Add(gchild.gameObject);
                     }

@@ -30,9 +30,14 @@ public class StanceController : MonoBehaviour
     protected List<Vector3> startingBodyPartPositions = new List<Vector3>();
     protected List<Vector3> startingBodyPartEulerAngles = new List<Vector3>();
 
+    protected Dictionary<string, float> proneAngleCache = new Dictionary<string, float>();
+    private static string proneAngleCacheFileName = "proneAngleCache.txt";
+
     protected virtual void Awake()
     {
-        for (int i=0; i<ProneModel_NoProjectiles.childCount; ++i)
+        LoadProneAngleCacheFromString(FileLoader.RetrieveFileContents(proneAngleCacheFileName));
+
+        for (int i = 0; i < ProneModel_NoProjectiles.childCount; ++i)
         {
             startingBodyPartPositions.Add(ProneModel_NoProjectiles.GetChild(i).localPosition);
             startingBodyPartEulerAngles.Add(ProneModel_NoProjectiles.GetChild(i).localEulerAngles);
@@ -82,7 +87,7 @@ public class StanceController : MonoBehaviour
     {
         int total = 0;
         List<int> nonzeroIndices = new List<int>();
-        for (int i=0; i<visPoints.Length; ++i)
+        for (int i = 0; i < visPoints.Length; ++i)
         {
             if (visPoints[i] != 0)
                 nonzeroIndices.Add(i);
@@ -158,35 +163,90 @@ public class StanceController : MonoBehaviour
     /// Agent falls asynchronously. Must be used in a coroutine.
     /// </summary>
     /// <returns></returns>
-    public virtual IEnumerator FindTorsoCollisionAngleAsync()
+    public virtual IEnumerator FindTorsoCollisionAngleAsync(WaypointData sourceWD, WaypointData targetWD)
     {
+        string waypointPairKey = sourceWD.waypointID + "-" + targetWD.waypointID;
+
         searchPhaseIndex = 0;
         SetStance(false); // Set data so this agent is now flagged as prone
         craniumCollisionCheckController.ResetCollisionStatus();
         torsoCollisionCheckController.ResetCollisionStatus(); // Start them upright
         ResetMannequin();
-        //ProneModel_NoProjectiles.localEulerAngles = new Vector3(0f, ProneModel_NoProjectiles.localEulerAngles.y, ProneModel_NoProjectiles.localEulerAngles.z); // Reset x-value on the projectile-transparent mannequin
-        ProneModel_NoProjectiles.localEulerAngles = Vector3.zero;
-        float timeLimit = 5f; // use a timer in case it gets stuck
-        for (int i = 0; i < eulerAngleDeltas.Length; ++i)
-        {
-            float timer = 0f;
-            while (
-                !craniumCollisionCheckController.IsCollidingWithTerrain && // If cranium is not colliding
-                !torsoCollisionCheckController.IsCollidingWithTerrain && // and if torso is not colliding
-                                                                         //(ProneModel_NoProjectiles.eulerAngles.x < 90f) && // And torso doesn't bend more than 90 degrees (controversial)
-                (timer < timeLimit)
-                )
-            {
-                ProneModel_NoProjectiles.localEulerAngles += new Vector3(eulerAngleDeltas[i], 0f, 0f);
-                //Debug.Log("Prone eulerAngles=" + ProneModel_NoProjectiles.eulerAngles);
-                timer += Time.fixedDeltaTime;
-                yield return new WaitForFixedUpdate();
-            }
 
-            if (i < eulerAngleDeltas.Length-1)
+        // Cache hit?
+        if (proneAngleCache.ContainsKey(waypointPairKey))
+        {
+            ProneModel_NoProjectiles.localEulerAngles += new Vector3(proneAngleCache[waypointPairKey], 0f, 0f);
+        }
+        else // Manually calculate
+        {
+
+            ProneModel_NoProjectiles.localEulerAngles = Vector3.zero;
+            float timeLimit = 5f; // use a timer in case it gets stuck
+            float eulerAngleHist = ProneModel_NoProjectiles.localEulerAngles[0];    // base angle
+            for (int i = 0; i < eulerAngleDeltas.Length; ++i)
             {
-                ProneModel_NoProjectiles.localEulerAngles -= new Vector3(eulerAngleDeltas[i], 0f, 0f); // Send it back one "try"
+                float timer = 0f;
+                float eulerAngleIncrement = eulerAngleDeltas[i];
+                while (
+                    !craniumCollisionCheckController.IsCollidingWithTerrain && // If cranium is not colliding
+                    !torsoCollisionCheckController.IsCollidingWithTerrain && // and if torso is not colliding
+                                                                             //(ProneModel_NoProjectiles.eulerAngles.x < 90f) && // And torso doesn't bend more than 90 degrees (controversial)
+                    (timer < timeLimit)
+                    )
+                {
+                    ProneModel_NoProjectiles.localEulerAngles += new Vector3(eulerAngleIncrement, 0f, 0f);
+                    if (ProneModel_NoProjectiles.localEulerAngles[0] - eulerAngleHist < eulerAngleIncrement / 2)
+                    {
+                        break;  // obstacles bending the legs
+                                // return new WaitForFixedUpdate();
+                    }
+                    else
+                    {
+                        eulerAngleHist = ProneModel_NoProjectiles.localEulerAngles[0];
+                    }
+                    //Debug.Log("Prone eulerAngles=" + ProneModel_NoProjectiles.eulerAngles);
+                    timer += Time.fixedDeltaTime;
+                    yield return new WaitForFixedUpdate();
+                }
+
+                if (i < eulerAngleDeltas.Length) // eulerAngleDeltas.Length-1
+                {
+                    ProneModel_NoProjectiles.localEulerAngles -= new Vector3(eulerAngleIncrement, 0f, 0f); // Send it back one "try"
+                }
+            }
+            proneAngleCache.Add(waypointPairKey, ProneModel_NoProjectiles.localEulerAngles.x);
+            FileLoader.WriteLineToFile(proneAngleCacheFileName, waypointPairKey + "\t" + ProneModel_NoProjectiles.localEulerAngles.x);
+        }
+    }
+
+    public string SaveProneAngleCacheToString()
+    {
+        string angleCacheString = string.Empty;
+        foreach(KeyValuePair<string,float> kvp in proneAngleCache)
+        {
+            angleCacheString += kvp.Key + "\t" + kvp.Value + "\n";
+        }
+        return angleCacheString.Trim();
+    }
+
+    public void LoadProneAngleCacheFromString(string angleCacheString)
+    {
+        string[] lines = angleCacheString.Split('\n');
+        foreach (string line in lines)
+        {
+            if (!string.IsNullOrEmpty(line.Trim()))
+            {
+                string[] parts = line.Split('\t');
+                float proneAngle;
+                if (float.TryParse(parts[1], out proneAngle))
+                {
+                    proneAngleCache.Add(parts[0], proneAngle);
+                }
+                else
+                {
+                    Debug.LogError("Cache parse error: " + line);
+                }
             }
         }
     }

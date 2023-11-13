@@ -55,6 +55,15 @@ public class GameController : MonoBehaviour
 
     protected string episodeResultDescription = "";
 
+    public enum EpisodeEndCondition
+    {
+        ANY_TEAM_ELIMINATED,
+        BLUE_LOSES_ANY,
+        RED_LOSES_ANY,
+        ANY_TEAM_LOSES_ANY
+    }
+    public EpisodeEndCondition episodeEndCondition = EpisodeEndCondition.ANY_TEAM_ELIMINATED;
+
     [Serializable]
     public class PlayerInfo
     {
@@ -106,8 +115,16 @@ public class GameController : MonoBehaviour
     public int MaxEnvironmentSteps = 5000;
     public static int NumDecisionSteps = 0;
 
+    [Header("Build Assistance")]
+    [Tooltip("If you find yourself changing agent bheaviors to heuristic to test before building, set this to ensure that it is set to default so that there are no run errors that require a rebuild")]
+    public bool EnsureAllRedAgentsAreSetToDefaultBehavior = false;
+    [Tooltip("If you find yourself changing agent bheaviors to heuristic to test before building, set this to ensure that it is set to default so that there are no run errors that require a rebuild")]
+    public bool EnsureAllBlueAgentsAreSetToDefaultBehavior = false;
+
     private void Awake()
     {
+        VisibilityController.LoadHitCache();
+
         WaypointMeshController.onWaypointsSetup += Initialize;
         _groups = groups;
         AgentHealth.AgentDied += AgentDied;
@@ -193,26 +210,33 @@ public class GameController : MonoBehaviour
         m_ResetTimer += 1;
         if (m_ResetTimer >= MaxEnvironmentSteps)
         {
+            /*
             m_Team0AgentGroup.GroupEpisodeInterrupted();
             m_Team1AgentGroup.GroupEpisodeInterrupted();
-            ResetScene();
+            ResetScene();*/
+            m_Team0AgentGroup.EndGroupEpisode();
+            m_Team1AgentGroup.EndGroupEpisode();
+            EndGame(1, 0);
         }
     }
 
     protected virtual void LateUpdate()
     {
-        if (mlAgentsController.decisionMode == MLAgentsController.DECISION_MODE.FIXED_INTERVAL)
+        if (mlAgentsController != null)
         {
-            CheckIfAllMovesDone();
-            //CheckEpisodeEndConditions(); // In case missed by AgentDied() [Seen rarely in 40x mode]
-        }
-        else // Still need to check if agents are at peaks (Could do on arrival, but this is more robust)
-        {
-            if (AreBlueAgentsAtPeaks())
+            if (mlAgentsController.decisionMode == MLAgentsController.DECISION_MODE.FIXED_INTERVAL)
             {
-                m_Team0AgentGroup.EndGroupEpisode();
-                m_Team1AgentGroup.EndGroupEpisode();
-                EndGame(1, 0);
+                CheckIfAllMovesDone();
+                //CheckEpisodeEndConditions(); // In case missed by AgentDied() [Seen rarely in 40x mode]
+            }
+            else // Still need to check if agents are at peaks (Could do on arrival, but this is more robust)
+            {
+                if (AreBlueAgentsAtPeaks())
+                {
+                    m_Team0AgentGroup.EndGroupEpisode();
+                    m_Team1AgentGroup.EndGroupEpisode();
+                    EndGame(1, 0);
+                }
             }
         }
     }
@@ -248,9 +272,7 @@ public class GameController : MonoBehaviour
 
         // The current agent was just killed and is the final agent
         if (IS_DEBUG) Debug.Log("m_NumberOfBluePlayersRemaining =" + m_NumberOfBluePlayersRemaining);
-        if ((m_NumberOfBluePlayersRemaining == 0) || 
-            (m_NumberOfRedPlayersRemaining == 0)
-            )
+        if (ShouldAgentCountsTriggerEpisodeEnd())
         {
             //SetEndOfEpisodeRewards(ThrowAgentGroup, HitAgentGroup);
             
@@ -267,6 +289,27 @@ public class GameController : MonoBehaviour
             deadAgent.gameObject.SetActive(false);
         }
         
+    }
+
+    protected virtual bool ShouldAgentCountsTriggerEpisodeEnd()
+    {
+        switch (episodeEndCondition)
+        {
+            default:
+            case EpisodeEndCondition.ANY_TEAM_ELIMINATED:
+                return ((m_NumberOfBluePlayersRemaining == 0) ||
+                        m_NumberOfRedPlayersRemaining == 0);
+            case EpisodeEndCondition.BLUE_LOSES_ANY:
+                return ((m_NumberOfBluePlayersRemaining < Team1Players.Count) ||
+                        m_NumberOfRedPlayersRemaining == 0);
+            case EpisodeEndCondition.RED_LOSES_ANY:
+                return ((m_NumberOfBluePlayersRemaining == 0) ||
+                        m_NumberOfRedPlayersRemaining < Team0Players.Count);
+            case EpisodeEndCondition.ANY_TEAM_LOSES_ANY:
+                return ((m_NumberOfBluePlayersRemaining < Team1Players.Count) ||
+                        m_NumberOfRedPlayersRemaining < Team0Players.Count);
+
+        }
     }
 
     protected virtual void UpdateEpisodeResultDescription(int winningTeamID)
@@ -331,7 +374,7 @@ public class GameController : MonoBehaviour
     // End the game, resetting if in training mode and showing a win screen if in game mode.
     public virtual void EndGame(int winningTeam, float delaySeconds = 1.0f)
     {
-        ResetScene();
+        ResetScene();        
     }
 
     public virtual IEnumerator ShowWinScreenThenReset(int winningTeam, float delaySeconds)
@@ -363,23 +406,25 @@ public class GameController : MonoBehaviour
 
         GetAllParameters();
 
-        print($"Resetting {gameObject.name}");
-        //Reset the agents
-        foreach (var item in Team0Players)
+        if (mlAgentsController != null)
         {
-            item.Agent.Health.RestoreHealth();
-            item.Agent.gameObject.SetActive(true);
-            item.Agent.ResetAgent();
-            //m_Team0AgentGroup.RegisterAgent(item.Agent);
+            print($"Resetting {gameObject.name}");
+            //Reset the agents
+            foreach (var item in Team0Players)
+            {
+                item.Agent.Health.RestoreHealth();
+                item.Agent.gameObject.SetActive(true);
+                item.Agent.ResetAgent();
+                //m_Team0AgentGroup.RegisterAgent(item.Agent);
+            }
+            foreach (var item in Team1Players)
+            {
+                item.Agent.Health.RestoreHealth();
+                item.Agent.gameObject.SetActive(true);
+                item.Agent.ResetAgent();
+                //m_Team1AgentGroup.RegisterAgent(item.Agent);
+            }
         }
-        foreach (var item in Team1Players)
-        {
-            item.Agent.Health.RestoreHealth();
-            item.Agent.gameObject.SetActive(true);
-            item.Agent.ResetAgent();
-            //m_Team1AgentGroup.RegisterAgent(item.Agent);
-        }
-
     }
 
     /*// Update is called once per frame
@@ -584,5 +629,4 @@ public class GameController : MonoBehaviour
         }
         return agentsOnWaypoint;
     }
-
 }

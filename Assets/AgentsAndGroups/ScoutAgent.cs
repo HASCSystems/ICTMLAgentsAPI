@@ -32,7 +32,8 @@ public class AgentAction
 /// </summary>
 public class ScoutAgent : Agent
 {
-    public bool IS_DEBUG = true;
+    public bool IS_DEBUG = false;
+    private static bool setAgentsInSightToAlwaysNone = false;
     public static readonly int numberOfRotationDirections = 8;
     public int initialStepPause = 0;
 
@@ -157,13 +158,12 @@ public class ScoutAgent : Agent
         m_AgentMovement = GetComponent<AgentMovement>();
         m_BehaviorParameters = gameObject.GetComponent<BehaviorParameters>();
 
-#if !UNITY_EDITOR
-        // If built, red agents MUST be set to Default or it will cause an error
-        if (teamID == 0)
+        if ((m_GameController.EnsureAllRedAgentsAreSetToDefaultBehavior && teamID == 0) ||
+            (m_GameController.EnsureAllBlueAgentsAreSetToDefaultBehavior && teamID == 1)
+            )
         {
             m_BehaviorParameters.BehaviorType = BehaviorType.Default;
         }
-#endif
 
         input = GetComponent<AgentInput>();
 
@@ -195,6 +195,13 @@ public class ScoutAgent : Agent
 
     public void ResetAgent()
     {
+        EndEpisode();
+        AgentGroup agentGroup = m_GameController.GetGroupForAgent(this);
+        if (agentGroup != null)
+            agentGroup.Reset();
+
+        m_AgentStepCount = 0;
+
         GetAllParameters();
         StopAllCoroutines();
         transform.position = m_StartingPos;
@@ -221,11 +228,11 @@ public class ScoutAgent : Agent
     protected virtual void FixedUpdate()
     {
         // TODO: REWRITE for more nuanced step 
-        if (StepCount % 5 == 0)
+        /*if (StepCount % 5 == 0)
         {
             m_IsDecisionStep = true;
             m_AgentStepCount++;
-        }
+        }*/
 
         if (StepCount % 2 == 0) // Since about 50 steps between waypoints and we want 25 chances to attack, set it to 2
         {
@@ -450,6 +457,8 @@ public class ScoutAgent : Agent
     // TODO: Take into account FOV of 180, might be trivial
     public virtual List<AgentTarget> GetOpponentsInSight()
     {
+        if (setAgentsInSightToAlwaysNone) return new List<AgentTarget>();
+
         List<AgentTarget> opponentsInSight = new List<AgentTarget>();
 
         int opponentTeamID = (teamID == 0) ? 1 : 0;
@@ -548,7 +557,7 @@ public class ScoutAgent : Agent
 
     protected virtual float GetAttackRange()
     {
-        Debug.Log("<color=red>Need to do full calculation</color>");
+        if (IS_DEBUG) Debug.Log("<color=red>Need to do full calculation</color>");
         return 100f;
     }
 
